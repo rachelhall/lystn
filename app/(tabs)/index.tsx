@@ -1,74 +1,102 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { StyleSheet, View, Dimensions, useColorScheme } from "react-native";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { FlatList, GestureHandlerRootView } from "react-native-gesture-handler";
+import Clip from "@/components/Clip";
 
-export default function HomeScreen() {
+import { Colors } from "@/constants/Colors";
+import { useEffect, useRef, useState } from "react";
+
+import { IClip } from "@/lib/types/IClip";
+import { useClipsQuery } from "@/queries/useClipsQuery";
+
+const { height } = Dimensions.get("window");
+import { Audio } from "expo-av";
+import { Sound } from "expo-av/build/Audio";
+
+export default function Discover() {
+  const colorScheme = useColorScheme() ?? "light";
+  const { data: clips } = useClipsQuery();
+
+  const audioRef = useRef<Sound | null>(null);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>();
+
+  const playAudio = async (audio_url: string, id: string) => {
+    if (audioRef.current) {
+      await audioRef.current.stopAsync();
+      await audioRef.current.unloadAsync();
+    }
+    const { sound } = await Audio.Sound.createAsync(
+      { uri: audio_url },
+      { shouldPlay: true }
+    );
+    audioRef.current = sound;
+
+    await audioRef.current.playAsync();
+    setCurrentlyPlaying(id);
+  };
+
+  const stopAudio = async () => {
+    if (audioRef.current) {
+      await audioRef.current.stopAsync();
+      await audioRef.current.unloadAsync();
+      audioRef.current = null;
+    }
+    setCurrentlyPlaying(null);
+  };
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (viewableItems.length > 0) {
+      const firstVisibleItem = viewableItems[0].item;
+
+      if (currentlyPlaying !== firstVisibleItem.id) {
+        playAudio(firstVisibleItem.audio_url, firstVisibleItem.id);
+      }
+    } else {
+      stopAudio();
+    }
+  });
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <GestureHandlerRootView>
+      <View
+        style={[
+          styles.discover,
+          { backgroundColor: Colors[colorScheme].background },
+        ]}
+      >
+        <FlatList
+          initialNumToRender={7}
+          data={clips}
+          renderItem={({ item }: { item: IClip }) => {
+            return (
+              <Clip
+                id={item.id}
+                title={item.title}
+                subtitle={item.subtitle}
+                type={item.type}
+                description={item.description}
+                audio_url={item.audio_url}
+              />
+            );
+          }}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          pagingEnabled
+          horizontal={false}
+          showsVerticalScrollIndicator={false}
+          snapToInterval={height} // Snap to full screen for each item
+          decelerationRate="fast" // For smooth scrolling
+          onViewableItemsChanged={onViewableItemsChanged.current}
+          viewabilityConfig={{
+            itemVisiblePercentThreshold: 50, // Adjust this threshold as needed
+          }}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  discover: { flex: 1 },
+  list: { flex: 1 },
 });
