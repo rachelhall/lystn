@@ -4,20 +4,23 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useCreateLikeMutation } from "@/mutations/useCreateLikeMutation";
 import { useDeleteLikeMutation } from "@/mutations/useDeleteLikeMutation";
 import { Colors } from "@/constants/Colors";
+import { useLikesQuery } from "@/queries/useLikesQuery";
+import { useDislikesQuery } from "@/queries/useDislikesQuery";
+import { useCreateDislikeMutation } from "@/mutations/useCreateDislikeMutation";
+import { useDeleteDislikeMutation } from "@/mutations/useDeleteDislikeMutation";
 
 interface IProps {
   clipId: string;
   profileId: string;
-  likes: any[] | null | undefined;
 }
-export default function LikeControls({ clipId, profileId, likes }: IProps) {
+export default function LikeControls({ clipId, profileId }: IProps) {
   const colorScheme = useColorScheme() ?? "light";
 
-  if (!colorScheme) {
-    // You can handle the case where the colorScheme is null or undefined if needed
-    return null; // Or set a default theme
-  }
+  const { data: likes } = useLikesQuery({ profileId, clipId });
+  const { data: dislikes } = useDislikesQuery({ profileId, clipId });
+
   const colors = Colors[colorScheme];
+
   const createLikeMutation = useCreateLikeMutation({ clipId });
 
   const deleteLikeMutation = useDeleteLikeMutation({
@@ -25,17 +28,42 @@ export default function LikeControls({ clipId, profileId, likes }: IProps) {
     profileId,
   });
 
+  const createDislikeMutation = useCreateDislikeMutation({ clipId });
+
+  const deleteDislikeMutation = useDeleteDislikeMutation({
+    clipId,
+    profileId,
+  });
+
   const handleLikeClip = () => {
+    if (isDisliked) {
+      handleUnDislikeClip();
+    }
     createLikeMutation.mutate();
   };
 
   const handleUnlikeClip = () => {
-    console.log("handle unlike");
     deleteLikeMutation.mutate();
   };
+
+  const handleDislikeClip = () => {
+    if (isLiked) {
+      handleUnlikeClip();
+    }
+    createDislikeMutation.mutate();
+  };
+
+  const handleUnDislikeClip = () => {
+    deleteDislikeMutation.mutate();
+  };
+
+  const isLiked = likes?.some((item) => item.clip_id === clipId);
+
+  const isDisliked = dislikes?.some((item) => item.clip_id === clipId);
+
   return (
     <View style={styles.container}>
-      {likes?.length ? (
+      {isLiked ? (
         <FontAwesome
           onPress={handleUnlikeClip}
           name="thumbs-up"
@@ -51,7 +79,21 @@ export default function LikeControls({ clipId, profileId, likes }: IProps) {
         />
       )}
 
-      <FontAwesome name="thumbs-o-down" size={54} color={colors.icon} />
+      {isDisliked ? (
+        <FontAwesome
+          onPress={handleUnDislikeClip}
+          name="thumbs-down"
+          size={54}
+          color={colors.icon}
+        />
+      ) : (
+        <FontAwesome
+          onPress={handleDislikeClip}
+          name="thumbs-o-down"
+          size={54}
+          color={colors.icon}
+        />
+      )}
     </View>
   );
 }

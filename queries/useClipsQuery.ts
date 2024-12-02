@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 export const useClipsQuery = () => {
   const fetchClips = async () => {
-    const { data } = await supabase.from("clip").select();
+    const { data } = await supabase.from("clips").select();
     return data;
   };
 

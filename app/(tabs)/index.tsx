@@ -12,47 +12,28 @@ import { useClipsQuery } from "@/queries/useClipsQuery";
 const { height } = Dimensions.get("window");
 import { Audio } from "expo-av";
 import { Sound } from "expo-av/build/Audio";
+import { useAudio } from "@/providers/AudioProvider";
 
 export default function Discover() {
   const colorScheme = useColorScheme() ?? "light";
   const { data: clips } = useClipsQuery();
 
-  const audioRef = useRef<Sound | null>(null);
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>();
 
-  const playAudio = async (audio_url: string, id: string) => {
-    if (audioRef.current) {
-      await audioRef.current.stopAsync();
-      await audioRef.current.unloadAsync();
-    }
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: audio_url },
-      { shouldPlay: true }
-    );
-    audioRef.current = sound;
-
-    await audioRef.current.playAsync();
-    setCurrentlyPlaying(id);
-  };
-
-  const stopAudio = async () => {
-    if (audioRef.current) {
-      await audioRef.current.stopAsync();
-      await audioRef.current.unloadAsync();
-      audioRef.current = null;
-    }
-    setCurrentlyPlaying(null);
-  };
+  const audio = useAudio();
 
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
     if (viewableItems.length > 0) {
       const firstVisibleItem = viewableItems[0].item;
 
       if (currentlyPlaying !== firstVisibleItem.id) {
-        playAudio(firstVisibleItem.audio_url, firstVisibleItem.id);
+        audio?.playAudio({
+          audio_url: firstVisibleItem.audio_url,
+          id: firstVisibleItem.id,
+        });
       }
     } else {
-      stopAudio();
+      audio?.stopAudio();
     }
   });
 
@@ -75,7 +56,6 @@ export default function Discover() {
                 subtitle={item.subtitle}
                 type={item.type}
                 description={item.description}
-                audio_url={item.audio_url}
               />
             );
           }}
@@ -84,11 +64,11 @@ export default function Discover() {
           pagingEnabled
           horizontal={false}
           showsVerticalScrollIndicator={false}
-          snapToInterval={height} // Snap to full screen for each item
-          decelerationRate="fast" // For smooth scrolling
+          snapToInterval={height}
+          decelerationRate="fast"
           onViewableItemsChanged={onViewableItemsChanged.current}
           viewabilityConfig={{
-            itemVisiblePercentThreshold: 50, // Adjust this threshold as needed
+            itemVisiblePercentThreshold: 50,
           }}
         />
       </View>

@@ -18,23 +18,17 @@ import { globalStyles } from "@/globalStyles";
 
 import { Audio } from "expo-av";
 import { useEffect } from "react";
+import { useDislikesQuery } from "@/queries/useDislikesQuery";
+import AudioPlaybackVisualizer from "./AudioPlaybackVisualizer";
 
 const { width, height } = Dimensions.get("window");
 
-export default function Clip({
-  id,
-  title,
-  subtitle,
-  description,
-  audio_url,
-}: IClip) {
+export default function Clip({ id, title, subtitle, description }: IClip) {
   const colorScheme = useColorScheme() ?? "light";
 
   const colors = Colors[colorScheme];
 
   const { data: profile } = useProfileQuery();
-
-  const { data: likes } = useLikesQuery({ profileId: profile?.id, clipId: id });
 
   const playSound = async () => {
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
@@ -56,7 +50,8 @@ export default function Clip({
         <Text style={globalStyles.medium}>{subtitle}</Text>
         <Text style={{ color: colors.text }}>{description}</Text>
       </View>
-      <LikeControls profileId={profile?.id} clipId={id} likes={likes} />
+      <AudioPlaybackVisualizer />
+      <LikeControls profileId={profile?.id} clipId={id} />
     </SafeAreaView>
   );
 }

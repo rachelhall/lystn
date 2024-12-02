@@ -3,6 +3,6 @@ export interface IClip {
   title: string;
   subtitle?: string;
   description?: string;
-  audio_url: string;
+  audio_url?: string;
   type: "podcast" | "voice memo" | "music" | null;
 }
